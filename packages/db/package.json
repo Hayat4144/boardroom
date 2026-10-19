@@ -11,6 +11,8 @@
     "db:seed": "tsx --env-file-if-exists=../../.env src/seed.ts"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite-pgvector": "^0.0.11",
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.11",
@@ -23,6 +25,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./orm": "./src/orm.ts"
+    "./orm": "./src/orm.ts",
+    "./testing": "./src/testing.ts"
   }
 }

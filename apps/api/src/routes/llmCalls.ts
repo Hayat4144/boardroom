@@ -27,7 +27,7 @@ export function llmCallsRouter({ db }: AppDeps) {
           outputTokens: llmCalls.outputTokens,
           costUsd: llmCalls.costUsd,
           latencyMs: llmCalls.latencyMs,
-          failed: sql<boolean>`(${llmCalls.response} ? 'error')`,
+          failed: sql<boolean>`coalesce(${llmCalls.response} ? 'error', false)`,
           createdAt: llmCalls.createdAt,
         })
         .from(llmCalls)
