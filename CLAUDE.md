@@ -27,7 +27,7 @@ For these, create **only** typed stubs: function signatures, interfaces, and a b
 
 - **Monorepo:** pnpm workspaces + Turborepo. Package scope `@boardroom/*`.
 - **Language:** TypeScript everywhere, strict mode.
-- **Frontend:** `apps/web` — React + Vite, React Router, TanStack Query, Tailwind CSS. (Not Next.js.)
+- **Frontend:** `apps/web` — React + Vite, React Router, TanStack Query, Tailwind CSS, shadcn/ui (custom design system in `src/index.css`). (Not Next.js.)
 - **Backend:** `apps/api` — Node.js + Express, Zod for request validation.
 - **Auth:** **Better Auth** with email + password, session cookies (httpOnly), Drizzle adapter. Mounted in Express. Email verification and password reset can be stubbed (log the link to console) in dev.
 - **Database:** PostgreSQL (16+; local dev runs 17) with pgvector; **Drizzle ORM** + drizzle-kit migrations. `packages/db` holds schema and client.
