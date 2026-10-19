@@ -13,7 +13,7 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 - [ ] [HAYAT] Manually download, per company: last 4 quarters' earnings-call transcripts + quarterly results PDFs.
 - [ ] [HAYAT] Create the repo, add CLAUDE.md and TASKS.md, get an LLM API key.
 - [ ] [HAYAT] Create a private S3 dev bucket + an IAM user limited to that bucket (never use root keys).
-- [ ] [CC] pnpm monorepo, TypeScript, lint/format, docker-compose Postgres + pgvector, `.env.example`.
+- [x] [CC] pnpm monorepo, TypeScript, lint/format, docker-compose Postgres + pgvector, `.env.example`.
 - [ ] [CC] Drizzle schema + migrations for all tables in CLAUDE.md; seed script for companies + one admin user.
 - [ ] [CC] S3 storage service (put, stream get, delete, presigned URLs) with configurable endpoint for R2; nothing stored locally.
 
