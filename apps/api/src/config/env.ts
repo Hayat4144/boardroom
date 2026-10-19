@@ -16,6 +16,8 @@ const envSchema = z.object({
   BETTER_AUTH_URL: z.string().url(),
   // Origin of the web app, allowed for CORS + Better Auth trusted origins.
   WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
+  // Max POST /ask calls per user per 24h (LLM cost control).
+  ASK_DAILY_LIMIT: z.coerce.number().int().positive().default(20),
 });
 
 export type Env = z.infer<typeof envSchema>;

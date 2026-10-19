@@ -19,13 +19,13 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 
 ## Phase 1 — Auth + plumbing
 
-- [ ] [CC] Better Auth (email + password) in Express with Drizzle adapter; `requireAuth` and `requireAdmin` middleware.
+- [x] [CC] Better Auth (email + password) in Express with Drizzle adapter; `requireAuth` and `requireAdmin` middleware.
 - [ ] [CC] React login/signup pages, protected routes, session handling.
 - [ ] [CC] Watchlist API + UI (add/remove companies).
 - [ ] [CC] Express API with all routes from CLAUDE.md, wired to HAYAT stubs, with access rules applied.
 - [ ] [CC] PDF upload to S3 + `process` endpoint (admin): stream from S3 → page text → `document_pages` + `chunks`.
 - [ ] [CC] Company page with Filings / Promises / Ask tabs; admin LLM calls page.
-- [ ] [CC] `LLMClient` thin wrapper + logging to `llm_calls`; per-user rate limit on Ask.
+- [x] [CC] `LLMClient` thin wrapper + logging to `llm_calls`; per-user rate limit on Ask.
 - [ ] [HAYAT] Review the code; sign up, add a company, run it end-to-end with stubs throwing TODO.
 
 ## Phase 2 — Learn: LLM basics + structured output
