@@ -15,7 +15,7 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 - [ ] [HAYAT] Create a private S3 dev bucket + an IAM user limited to that bucket (never use root keys).
 - [x] [CC] pnpm monorepo, TypeScript, lint/format, local Postgres + pgvector, `.env.example`.
 - [x] [CC] Drizzle schema + migrations for all tables in CLAUDE.md; seed script for companies + one admin user.
-- [ ] [CC] S3 storage service (put, stream get, delete, presigned URLs) with configurable endpoint for R2; nothing stored locally.
+- [x] [CC] S3 storage service (put, stream get, delete, presigned URLs) with configurable endpoint for R2; nothing stored locally.
 
 ## Phase 1 — Auth + plumbing
 
