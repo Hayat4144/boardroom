@@ -25,17 +25,17 @@ For these, create **only** typed stubs: function signatures, interfaces, and a b
 
 ## Tech stack
 
-- **Monorepo:** pnpm workspaces. Package scope `@boardroom/*`.
+- **Monorepo:** pnpm workspaces + Turborepo. Package scope `@boardroom/*`.
 - **Language:** TypeScript everywhere, strict mode.
 - **Frontend:** `apps/web` — React + Vite, React Router, TanStack Query, Tailwind CSS. (Not Next.js.)
 - **Backend:** `apps/api` — Node.js + Express, Zod for request validation.
 - **Auth:** **Better Auth** with email + password, session cookies (httpOnly), Drizzle adapter. Mounted in Express. Email verification and password reset can be stubbed (log the link to console) in dev.
-- **Database:** PostgreSQL 16 with pgvector; **Drizzle ORM** + drizzle-kit migrations. `packages/db` holds schema and client.
+- **Database:** PostgreSQL (16+; local dev runs 17) with pgvector; **Drizzle ORM** + drizzle-kit migrations. `packages/db` holds schema and client.
 - **Jobs:** pg-boss (Postgres-based queue).
 - **File storage:** **S3 from day one — nothing stored on local disk.** Use `@aws-sdk/client-s3` behind a `Storage` interface (put, get as stream, delete, presigned GET URL). Endpoint is configurable so the same code works with Cloudflare R2 (S3-compatible). Separate dev bucket. For PDF processing, stream the object from S3 into memory and discard after; never persist files locally. Object keys: `filings/{companyId}/{filingId}.pdf`. Bucket stays private; frontend opens source PDFs via short-lived presigned URLs.
 - **PDF text:** pdf-parse for digital PDFs (OCR out of scope for now).
 - **LLM provider:** behind an `LLMClient` interface in `apps/api/src/llm/`; Claude Code may implement the thin HTTP client but NOT prompts or agent logic.
-- **Local dev:** docker-compose for Postgres (pgvector image).
+- **Local dev:** local Postgres install with pgvector (no Docker). One-time setup: `pnpm db:setup` (runs `scripts/setup-local-db.sql` as the postgres superuser).
 - **Config:** `.env` with `DATABASE_URL`, `LLM_API_KEY`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT` (optional, for R2), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `VITE_API_URL`. Provide `.env.example`.
 
 ## Folder structure
