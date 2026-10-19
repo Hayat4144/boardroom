@@ -22,8 +22,8 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 - [x] [CC] Better Auth (email + password) in Express with Drizzle adapter; `requireAuth` and `requireAdmin` middleware.
 - [ ] [CC] React login/signup pages, protected routes, session handling.
 - [ ] [CC] Watchlist API + UI (add/remove companies).
-- [ ] [CC] Express API with all routes from CLAUDE.md, wired to HAYAT stubs, with access rules applied.
-- [ ] [CC] PDF upload to S3 + `process` endpoint (admin): stream from S3 → page text → `document_pages` + `chunks`.
+- [x] [CC] Express API with all routes from CLAUDE.md, wired to HAYAT stubs, with access rules applied.
+- [x] [CC] PDF upload to S3 + `process` endpoint (admin): stream from S3 → page text → `document_pages` + `chunks`.
 - [ ] [CC] Company page with Filings / Promises / Ask tabs; admin LLM calls page.
 - [x] [CC] `LLMClient` thin wrapper + logging to `llm_calls`; per-user rate limit on Ask.
 - [ ] [HAYAT] Review the code; sign up, add a company, run it end-to-end with stubs throwing TODO.

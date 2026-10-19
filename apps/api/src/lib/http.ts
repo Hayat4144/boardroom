@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from "express";
+import multer from "multer";
 import { z } from "zod";
 import { isStubError } from "../stubs";
 
@@ -34,6 +35,11 @@ export const idParam = z.object({ id: z.uuid() });
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof HttpError) {
     res.status(err.status).json({ error: err.code, message: err.message });
+    return;
+  }
+  if (err instanceof multer.MulterError) {
+    const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+    res.status(status).json({ error: "invalid_upload", message: err.message });
     return;
   }
   if (isStubError(err)) {
