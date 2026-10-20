@@ -15,7 +15,7 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 - [ ] [HAYAT] Create a private S3 dev bucket + an IAM user limited to that bucket (never use root keys).
 - [x] [CC] pnpm monorepo, TypeScript, lint/format, local Postgres + pgvector, `.env.example`.
 - [x] [CC] Drizzle schema + migrations for all tables in CLAUDE.md; seed script for companies + one admin user.
-- [x] [CC] S3 storage service (put, stream get, delete, presigned URLs) with configurable endpoint for R2; nothing stored locally.
+- [x] [CC] S3 storage service (put, stream get, delete, presigned URLs); AWS S3 only, nothing stored locally.
 
 ## Phase 1 — Auth + plumbing
 
@@ -25,7 +25,7 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 - [x] [CC] Express API with all routes from CLAUDE.md, wired to HAYAT stubs, with access rules applied.
 - [x] [CC] PDF upload to S3 + `process` endpoint (admin): stream from S3 → page text → `document_pages` + `chunks`.
 - [x] [CC] Company page with Filings / Promises / Ask tabs; admin LLM calls page.
-- [x] [CC] `LLMClient` thin wrapper + logging to `llm_calls`; per-user rate limit on Ask.
+- [x] [CC] `callLLM()` thin wrapper + logging to `llm_calls`; per-user rate limit on Ask.
 - [ ] [HAYAT] Review the code; sign up, add a company, run it end-to-end with stubs throwing TODO.
 
 ## Phase 2 — Learn: LLM basics + structured output

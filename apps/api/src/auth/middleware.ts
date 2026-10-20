@@ -1,13 +1,6 @@
-import type { UserRole } from "@boardroom/db";
 import type { Request, RequestHandler } from "express";
-import { HttpError } from "../lib/http";
-
-export interface SessionUser {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-}
+import { httpError } from "../http";
+import { getSessionUser, type SessionUser } from "./auth";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace -- Express's documented augmentation point
@@ -18,26 +11,26 @@ declare global {
   }
 }
 
-/** Resolves the logged-in user from the request's session cookie, or null. */
-export type GetSessionUser = (req: Request) => Promise<SessionUser | null>;
+const signInRequired = () => httpError(401, "unauthorized", "Sign in required");
 
-export function createRequireAuth(getSessionUser: GetSessionUser): RequestHandler {
-  return async (req, _res, next) => {
-    const user = await getSessionUser(req);
-    if (!user) throw new HttpError(401, "unauthorized", "Sign in required");
-    req.user = user;
-    next();
-  };
-}
+export const requireAuth: RequestHandler = async (req, _res, next) => {
+  const user = await getSessionUser(req);
+  if (!user) throw signInRequired();
 
-export const requireAdmin: RequestHandler = (req, _res, next) => {
-  if (!req.user) throw new HttpError(401, "unauthorized", "Sign in required");
-  if (req.user.role !== "admin") throw new HttpError(403, "forbidden", "Admin only");
+  req.user = user;
   next();
 };
 
-/** The authenticated user; only call behind requireAuth. */
+export const requireAdmin: RequestHandler = (req, _res, next) => {
+  const user = currentUser(req);
+  if (user.role !== "admin") throw httpError(403, "forbidden", "Admin only");
+
+  next();
+};
+
+/** The signed-in user; only call behind requireAuth. */
 export function currentUser(req: Request): SessionUser {
-  if (!req.user) throw new HttpError(401, "unauthorized", "Sign in required");
+  if (!req.user) throw signInRequired();
+
   return req.user;
 }

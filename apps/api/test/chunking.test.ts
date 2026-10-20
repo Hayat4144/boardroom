@@ -9,15 +9,16 @@ describe("chunkText", () => {
 
   it("splits long text into bounded, overlapping chunks covering everything", () => {
     const sentences = Array.from({ length: 60 }, (_, i) => `Sentence number ${i} about margins.`);
-    const text = sentences.join(" ");
-    const chunks = chunkText(text, { maxChars: 300, overlapChars: 60 });
+    const chunks = chunkText(sentences.join(" "), { maxChars: 300, overlapChars: 60 });
     expect(chunks.length).toBeGreaterThan(1);
-    for (const c of chunks) expect(c.length).toBeLessThanOrEqual(300);
-    for (const s of sentences) expect(chunks.some((c) => c.includes(s))).toBe(true);
-    // consecutive chunks overlap
+
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(300);
+    for (const s of sentences) expect(chunks.some((chunk) => chunk.includes(s))).toBe(true);
+
+    // Consecutive chunks overlap.
     for (let i = 1; i < chunks.length; i++) {
-      const tail = chunks[i - 1]!.slice(-20);
-      expect(chunks[i]!.includes(tail.trim().split(" ").at(-1)!)).toBe(true);
+      const lastWord = chunks[i - 1]!.slice(-20).trim().split(" ").at(-1)!;
+      expect(chunks[i]!.includes(lastWord)).toBe(true);
     }
   });
 

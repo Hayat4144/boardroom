@@ -16,17 +16,17 @@ with page-level citations.
 
 ## Stack
 
-| Part     | Tech                                                                         |
-| -------- | ---------------------------------------------------------------------------- |
-| Monorepo | pnpm workspaces + Turborepo, TypeScript (strict)                             |
-| Web      | React + Vite, React Router, TanStack Query, Tailwind CSS, shadcn/ui          |
-| API      | Node.js + Express, Zod, Better Auth (email + password, httpOnly cookies)     |
-| Data     | PostgreSQL 16+ with pgvector, Drizzle ORM + drizzle-kit migrations           |
-| Jobs     | pg-boss (queue lives in Postgres)                                            |
-| Files    | S3 (or Cloudflare R2): private bucket, presigned URLs, nothing on local disk |
-| PDFs     | pdf-parse (digital PDFs; no OCR yet)                                         |
-| LLM      | Anthropic SDK behind `LLMClient`; every call logged to `llm_calls`           |
-| Tests    | Vitest + Supertest, PGlite (in-process Postgres), aws-sdk-client-mock        |
+| Part     | Tech                                                                     |
+| -------- | ------------------------------------------------------------------------ |
+| Monorepo | pnpm workspaces + Turborepo, TypeScript (strict)                         |
+| Web      | React + Vite, React Router, TanStack Query, Tailwind CSS, shadcn/ui      |
+| API      | Node.js + Express, Zod, Better Auth (email + password, httpOnly cookies) |
+| Data     | PostgreSQL 16+ with pgvector, Drizzle ORM + drizzle-kit migrations       |
+| Jobs     | pg-boss (queue lives in Postgres)                                        |
+| Files    | AWS S3: private bucket, presigned URLs, nothing on local disk            |
+| PDFs     | pdf-parse (digital PDFs; no OCR yet)                                     |
+| LLM      | Anthropic SDK behind `LLMClient`; every call logged to `llm_calls`       |
+| Tests    | Vitest + Supertest, PGlite (in-process Postgres), aws-sdk-client-mock    |
 
 ```
 apps/
@@ -43,7 +43,7 @@ scripts/      setup-local-db.sql
 - **Node.js 22+** and **pnpm 10** (`corepack enable` or `npm i -g pnpm`)
 - **PostgreSQL 16+ with pgvector**, installed locally. On Ubuntu/Debian with the PGDG repo:
   `sudo apt install postgresql-17 postgresql-17-pgvector`
-- An **S3 bucket** (or R2 bucket) and an access key limited to it; see [S3 setup](#s3-setup)
+- An **S3 bucket** and an access key limited to it; see [S3 setup](#s3-setup)
 - An **Anthropic API key**, only once your extraction or agent code calls the LLM
 
 ## Setup
@@ -62,18 +62,17 @@ cp .env.example .env
 
 Fill in `.env` at the repo root; every app reads it from there:
 
-| Variable                                   | Notes                                                                                         |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                             | Default matches `scripts/setup-local-db.sql`                                                  |
-| `BETTER_AUTH_SECRET`                       | **Required.** `openssl rand -base64 32`                                                       |
-| `BETTER_AUTH_URL`                          | API origin, default `http://localhost:3000`                                                   |
-| `S3_BUCKET`, `S3_REGION`                   | Your private bucket                                                                           |
-| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | **Required.** Keys of the bucket-scoped IAM user                                              |
-| `S3_ENDPOINT`                              | Leave empty for AWS; set for R2 (`https://<account>.r2.cloudflarestorage.com`, region `auto`) |
-| `VITE_API_URL`                             | Where the browser calls the API, default `http://localhost:3000`                              |
-| `SEED_ADMIN_EMAIL` / `_PASSWORD` / `_NAME` | Admin user created by the seed (password ≥ 8 chars)                                           |
-| `LLM_API_KEY`                              | Optional until Phase 2                                                                        |
-| `PORT`, `WEB_ORIGIN`, `ASK_DAILY_LIMIT`    | Optional; defaults `3000`, `http://localhost:5173`, `20`                                      |
+| Variable                                   | Notes                                                            |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| `DATABASE_URL`                             | Default matches `scripts/setup-local-db.sql`                     |
+| `BETTER_AUTH_SECRET`                       | **Required.** `openssl rand -base64 32`                          |
+| `BETTER_AUTH_URL`                          | API origin, default `http://localhost:3000`                      |
+| `S3_BUCKET`, `S3_REGION`                   | Your private bucket                                              |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | **Required.** Keys of the bucket-scoped IAM user                 |
+| `VITE_API_URL`                             | Where the browser calls the API, default `http://localhost:3000` |
+| `SEED_ADMIN_EMAIL` / `_PASSWORD` / `_NAME` | Admin user created by the seed (password ≥ 8 chars)              |
+| `LLM_API_KEY`                              | Optional until Phase 2                                           |
+| `PORT`, `WEB_ORIGIN`, `ASK_DAILY_LIMIT`    | Optional; defaults `3000`, `http://localhost:5173`, `20`         |
 
 The API checks its environment on startup and lists everything that's missing or invalid.
 
@@ -206,9 +205,9 @@ All routes are under `/api` and require a session except `/api/auth/*`. Errors a
 | `apps/api/src/agent/answerQuestion.ts`       | `POST /api/companies/:id/ask`; result saved to `questions`                          |
 | `apps/api/src/agent/tools.ts`                | Your agent loop                                                                     |
 
-Inside them, use `getDb()` (`apps/api/src/db.ts`) and
-`getLLMClient().createMessage(params, { purpose })` (`apps/api/src/llm`). Every LLM call
-is then logged with tokens, cost and latency, and attributed to the user who asked.
+Inside them, import `db` from `apps/api/src/db.ts` and call
+`callLLM(params, { purpose, userId })` from `apps/api/src/llm/llm.ts`. Every LLM call
+is then logged with tokens, cost and latency. Pass `userId` to attribute a call to a user.
 
 ## Testing
 

@@ -1,73 +1,58 @@
 import { randomUUID } from "node:crypto";
-import { Readable } from "node:stream";
-import { companies, user, type Database, type UserRole } from "@boardroom/db";
-import { vi } from "vitest";
-import { createApp } from "../src/app";
-import type { SessionUser } from "../src/auth/middleware";
-import type { AppDeps } from "../src/routes/deps";
-import { ObjectNotFoundError, type Storage } from "../src/services/storage";
-
-/** In-memory Storage; nothing touches S3 or disk. */
-export function memoryStorage() {
-  const objects = new Map<string, { body: Buffer; contentType: string }>();
-  const storage: Storage = {
-    async put(key, body, contentType) {
-      const buf = Buffer.isBuffer(body)
-        ? body
-        : body instanceof Uint8Array
-          ? Buffer.from(body)
-          : Buffer.concat(await body.toArray());
-      objects.set(key, { body: buf, contentType });
-    },
-    async getStream(key) {
-      const obj = objects.get(key);
-      if (!obj) throw new ObjectNotFoundError(key);
-      return Readable.from([obj.body]);
-    },
-    async delete(key) {
-      objects.delete(key);
-    },
-    async getPresignedUrl(key, expiresInSeconds = 300) {
-      return `https://s3.test/${key}?X-Amz-Expires=${expiresInSeconds}`;
-    },
-  };
-  return { storage, objects };
-}
-
-export async function createUser(db: Database, role: UserRole = "user"): Promise<SessionUser> {
-  const id = randomUUID();
-  const u = { id, email: `${role}-${id.slice(0, 8)}@test.dev`, name: `Test ${role}`, role };
-  await db.insert(user).values(u);
-  return u;
-}
-
-export async function createCompany(db: Database, name = "Infosys Ltd") {
-  const [c] = await db
-    .insert(companies)
-    .values({
-      name,
-      nseSymbol: name.slice(0, 4).toUpperCase(),
-      bseCode: String(Math.random()).slice(2, 8),
-    })
-    .returning();
-  return c!;
-}
+import { companies, user, type UserRole } from "@boardroom/db";
+import { eq } from "@boardroom/db/orm";
+import { createTestDb } from "@boardroom/db/testing";
+import type { Request } from "express";
+import type { SessionUser } from "../src/auth/auth";
 
 /**
- * The real Express app with test doubles: sessions come from an `x-test-user`
- * header (instead of Better Auth cookies), storage is in-memory, jobs are spies.
+ * One in-process Postgres per test file (Vitest isolates files). Test files
+ * point the app at it with: vi.mock("../src/db", ...).
  */
-export function buildApp(db: Database, users: SessionUser[], overrides: Partial<AppDeps> = {}) {
-  const { storage, objects } = memoryStorage();
-  const jobs = { enqueueExtractPromises: vi.fn(async () => "job-1") };
-  const app = createApp({
-    db,
-    storage,
-    jobs,
-    getSessionUser: async (req) => users.find((u) => u.id === req.header("x-test-user")) ?? null,
-    webOrigin: "http://localhost:5173",
-    askDailyLimit: 20,
-    ...overrides,
-  });
-  return { app, storage, objects, jobs };
+export const testDb = await createTestDb();
+
+/** Stand-in for Better Auth: the signed-in user is whoever the `x-test-user` header names. */
+export async function sessionFromHeader(req: Request): Promise<SessionUser | null> {
+  const id = req.header("x-test-user");
+  if (!id) return null;
+
+  const [row] = await testDb.db.select().from(user).where(eq(user.id, id));
+  return row ? { id: row.id, email: row.email, name: row.name, role: row.role } : null;
+}
+
+export const as = (u: SessionUser) => ({ "x-test-user": u.id });
+
+/** In-memory replacement for the S3 functions in src/services/storage.ts. */
+export const storedFiles = new Map<string, Buffer>();
+
+export const memoryStorage = {
+  uploadFile: async (key: string, body: Buffer) => void storedFiles.set(key, body),
+  deleteFile: async (key: string) => void storedFiles.delete(key),
+  getFileUrl: async (key: string) => `https://s3.test/${key}`,
+
+  downloadFile: async (key: string) => {
+    const file = storedFiles.get(key);
+    if (!file) throw new Error(`No such file: ${key}`);
+
+    return file;
+  },
+};
+
+export async function createUser(role: UserRole = "user"): Promise<SessionUser> {
+  const id = randomUUID();
+  const newUser = { id, email: `${role}-${id.slice(0, 8)}@test.dev`, name: `Test ${role}`, role };
+
+  await testDb.db.insert(user).values(newUser);
+  return newUser;
+}
+
+export async function createCompany(name = "Infosys Ltd") {
+  const nseSymbol = name.slice(0, 4).toUpperCase();
+  const bseCode = String(Math.random()).slice(2, 8);
+
+  const [company] = await testDb.db
+    .insert(companies)
+    .values({ name, nseSymbol, bseCode })
+    .returning();
+  return company!;
 }
