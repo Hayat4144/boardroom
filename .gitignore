@@ -10,3 +10,6 @@ coverage/
 .DS_Store
 *.log
 .turbo/
+
+# tesseract.js language data (downloaded on first OCR run)
+*.traineddata

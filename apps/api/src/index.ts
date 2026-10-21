@@ -2,6 +2,7 @@ import { app } from "./app";
 import { pool } from "./db";
 import { env } from "./env";
 import { startJobs, stopJobs } from "./jobs/jobs";
+import { stopOcr } from "./services/pdf";
 
 await startJobs();
 
@@ -14,7 +15,9 @@ async function shutdown(signal: string) {
   server.close();
 
   await stopJobs();
+  await stopOcr();
   await pool.end();
+
   process.exit(0);
 }
 

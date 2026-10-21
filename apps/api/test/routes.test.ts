@@ -10,12 +10,13 @@ import {
 } from "@boardroom/db";
 import { eq } from "@boardroom/db/orm";
 import request from "supertest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as AnswerQuestionModule from "../src/agent/answerQuestion";
 import { answerQuestion } from "../src/agent/answerQuestion";
 import { app } from "../src/app";
 import type { SessionUser } from "../src/auth/auth";
 import { enqueueExtractPromises } from "../src/jobs/jobs";
+import { stopOcr } from "../src/services/pdf";
 import { as, createCompany, createUser, storedFiles, testDb } from "./helpers";
 
 // The real app, with test stand-ins for the database, sign-in, S3 and the job queue.
@@ -58,6 +59,8 @@ beforeEach(async () => {
   bob = await createUser();
   admin = await createUser("admin");
 });
+
+afterAll(stopOcr);
 
 function uploadPdf(companyId: string, file = PDF, title = "Q2 FY26 call") {
   return request(app)
