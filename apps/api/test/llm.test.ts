@@ -1,57 +1,61 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { llmCalls } from "@boardroom/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { callLLM, estimateCostUsd } from "../src/llm/llm";
+import { callLLM, type ChatParams } from "../src/llm/llm";
 import { createUser, testDb } from "./helpers";
 
 vi.mock("../src/db", async () => ({ db: (await import("./helpers")).testDb.db }));
+vi.mock("../src/env", async (importOriginal) => {
+  const { env } = await importOriginal<typeof import("../src/env")>();
+  return { env: { ...env, LLM_API_KEY: "test-key" } };
+});
 
-// Replace the Anthropic SDK so no request leaves the machine.
+// Replace the OpenAI SDK so no request leaves the machine.
 const create = vi.hoisted(() => vi.fn());
-vi.mock("@anthropic-ai/sdk", () => ({
+vi.mock("openai", () => ({
   default: class {
-    messages = { create };
+    chat = { completions: { create } };
   },
 }));
 
 beforeEach(() => testDb.reset());
 
-const params: Anthropic.MessageCreateParamsNonStreaming = {
-  model: "claude-opus-5-5",
-  max_tokens: 100,
+const params: ChatParams = {
+  model: "deepseek/deepseek-v4-flash",
+  max_completion_tokens: 100,
   messages: [{ role: "user", content: "hi" }],
 };
 
-const message = {
-  id: "msg_1",
-  model: "claude-opus-5-5",
-  content: [{ type: "text", text: "hello" }],
+const completion = {
+  id: "gen_1",
+  model: "deepseek/deepseek-v4-flash",
+  choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "hello" } }],
 
-  usage: { input_tokens: 1000, output_tokens: 200 },
+  usage: { prompt_tokens: 1000, completion_tokens: 200, total_tokens: 1200, cost: 0.0008 },
 };
 
 describe("callLLM", () => {
-  it("returns the message and logs tokens, cost, latency, request and response", async () => {
+  it("returns the completion and logs tokens, cost, latency, request and response", async () => {
     const user = await createUser();
-    create.mockResolvedValueOnce(message);
+    create.mockResolvedValueOnce(completion);
 
     const result = await callLLM(params, { purpose: "ask", userId: user.id });
-    expect(result).toBe(message);
+    expect(result).toBe(completion);
+    expect(create).toHaveBeenCalledWith({ ...params, usage: { include: true } });
 
     const [row] = await testDb.db.select().from(llmCalls);
     expect(row).toMatchObject({
       userId: user.id,
       purpose: "ask",
-      model: "claude-opus-5-5",
+      model: "deepseek/deepseek-v4-flash",
 
       inputTokens: 1000,
       outputTokens: 200,
-      costUsd: "0.008000", // 1000 * $4/M + 200 * $20/M
+      costUsd: "0.000800",
     });
 
     expect(row!.latencyMs).toBeGreaterThanOrEqual(0);
     expect(row!.request).toEqual(params);
-    expect((row!.response as { id: string }).id).toBe("msg_1");
+    expect((row!.response as { id: string }).id).toBe("gen_1");
   });
 
   it("logs failed calls and rethrows", async () => {
@@ -61,23 +65,5 @@ describe("callLLM", () => {
     const [row] = await testDb.db.select().from(llmCalls);
     expect(row).toMatchObject({ purpose: "extract_promises", userId: null, inputTokens: null });
     expect(row!.response).toEqual({ error: { type: "Error", message: "overloaded" } });
-  });
-});
-
-describe("estimateCostUsd", () => {
-  it("prices cache reads and writes", () => {
-    const cost = estimateCostUsd("claude-sonnet-5-5", {
-      input_tokens: 1_000_000,
-      output_tokens: 0,
-      cache_creation_input_tokens: 1_000_000,
-
-      cache_read_input_tokens: 1_000_000,
-    });
-
-    expect(cost).toBeCloseTo(2 + 2.5 + 0.2);
-  });
-
-  it("returns null for unknown models", () => {
-    expect(estimateCostUsd("some-other-model", { input_tokens: 1, output_tokens: 1 })).toBeNull();
   });
 });

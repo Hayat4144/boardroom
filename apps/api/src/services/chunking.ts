@@ -7,7 +7,7 @@
  */
 export type ChunkOptions = { maxChars: number; overlapChars: number };
 
-export const DEFAULT_CHUNK_OPTIONS: ChunkOptions = { maxChars: 1500, overlapChars: 200 };
+export const DEFAULT_CHUNK_OPTIONS: ChunkOptions = { maxChars: 1000, overlapChars: 200 };
 
 const BREAKS = ["\n\n", "\n", ". ", " "];
 

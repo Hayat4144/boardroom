@@ -1,29 +1,15 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { llmCalls } from "@boardroom/db";
+import OpenAI from "openai";
 import { db } from "../db";
 import { env } from "../env";
 
-export const DEFAULT_MODEL = "claude-opus-5-5";
+export const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
 
-/** USD per 1M tokens (Anthropic API rates, 2026-10). Only used to fill llm_calls.cost_usd. */
-const PRICES: Record<string, { input: number; output: number; cacheRead: number }> = {
-  "claude-fable-5-1": { input: 10, output: 50, cacheRead: 0.25 },
-  "claude-opus-5-5": { input: 4, output: 20, cacheRead: 0.2 },
-  "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.2 },
+/** Long transcripts can take a while to generate; the SDK retries timeouts twice. */
+const TIMEOUT_MS = 120_000;
 
-  "claude-haiku-5-5": { input: 0.1, output: 0.5, cacheRead: 0.01 },
-};
-
-/** Cache writes (5-minute TTL) bill at 1.25x the input rate. */
-const CACHE_WRITE_MULTIPLIER = 1.25;
-
-export type TokenUsage = {
-  input_tokens: number;
-  output_tokens: number;
-  cache_creation_input_tokens?: number | null;
-
-  cache_read_input_tokens?: number | null;
-};
+export type ChatParams = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
+export type ChatCompletion = OpenAI.Chat.ChatCompletion;
 
 export type LLMCallInfo = {
   /** What the call is for, e.g. "extract_promises" or "ask". Shown on the admin page. */
@@ -32,46 +18,53 @@ export type LLMCallInfo = {
   userId?: string | null;
 };
 
-let anthropic: Anthropic | undefined;
+let client: OpenAI | undefined;
 
-function getAnthropic(): Anthropic {
+function getClient(): OpenAI {
   if (!env.LLM_API_KEY) throw new Error("LLM_API_KEY is not set");
 
-  anthropic ??= new Anthropic({ apiKey: env.LLM_API_KEY });
-  return anthropic;
+  client ??= new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: env.LLM_API_KEY,
+    timeout: TIMEOUT_MS,
+  });
+  return client;
 }
 
 /**
- * Sends one request to the LLM and logs it to `llm_calls` (tokens, cost,
- * latency, full request/response), including failed calls.
+ * Sends one chat completion through OpenRouter and logs it to `llm_calls`
+ * (tokens, cost, latency, full request/response), including failed calls.
  * No prompts and no agent logic live here; the caller builds `params`.
  */
 export async function callLLM(
-  params: Anthropic.MessageCreateParamsNonStreaming,
+  params: ChatParams,
   { purpose, userId = null }: LLMCallInfo,
-): Promise<Anthropic.Message> {
+): Promise<ChatCompletion> {
   const startedAt = Date.now();
   const latencyMs = () => Date.now() - startedAt;
 
+  // OpenRouter-only flag: puts the billed cost (USD) on `usage.cost`.
+  const request = { ...params, usage: { include: true } } as ChatParams;
+
   try {
-    const message = await getAnthropic().messages.create(params);
-    const { usage } = message;
+    const completion = await getClient().chat.completions.create(request);
+    const usage = completion.usage as (OpenAI.CompletionUsage & { cost?: number }) | undefined;
 
     await logCall({
       userId,
       purpose,
-      model: message.model,
+      model: completion.model,
 
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      costUsd: estimateCostUsd(params.model, usage),
+      inputTokens: usage?.prompt_tokens,
+      outputTokens: usage?.completion_tokens,
+      costUsd: usage?.cost ?? null,
 
       latencyMs: latencyMs(),
       request: params,
-      response: message,
+      response: completion,
     });
 
-    return message;
+    return completion;
   } catch (err) {
     await logCall({
       userId,
@@ -85,23 +78,6 @@ export async function callLLM(
 
     throw err;
   }
-}
-
-/** Cost of one call in USD, or null for a model without a known price. */
-export function estimateCostUsd(model: string, usage: TokenUsage): number | null {
-  const price = PRICES[model];
-  if (!price) return null;
-
-  const cacheWrites = usage.cache_creation_input_tokens ?? 0;
-  const cacheReads = usage.cache_read_input_tokens ?? 0;
-
-  const perMillion =
-    usage.input_tokens * price.input +
-    usage.output_tokens * price.output +
-    cacheWrites * price.input * CACHE_WRITE_MULTIPLIER +
-    cacheReads * price.cacheRead;
-
-  return perMillion / 1_000_000;
 }
 
 type LogRow = {

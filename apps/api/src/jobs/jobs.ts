@@ -33,10 +33,10 @@ export function enqueueExtractPromises(filingId: string): Promise<string | null>
   return boss.send(EXTRACT_PROMISES, data, { singletonKey: filingId });
 }
 
-/** Runs HAYAT's extractPromises() and replaces the filing's previous promises with the result. */
 async function saveExtractedPromises(filingId: string): Promise<void> {
   try {
     const extracted = await extractPromises(filingId);
+    console.log("Extracted", extracted);
 
     await db.transaction(async (tx) => {
       await tx.delete(promises).where(eq(promises.sourceFilingId, filingId));
