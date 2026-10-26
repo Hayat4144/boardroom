@@ -62,12 +62,28 @@ beforeEach(async () => {
 
 afterAll(stopOcr);
 
-function uploadPdf(companyId: string, file = PDF, title = "Q2 FY26 call") {
-  return request(app)
-    .post(`/api/companies/${companyId}/filings/upload`)
-    .set(as(admin))
-    .field("title", title)
-    .attach("file", file, { filename: "call.pdf", contentType: "application/pdf" });
+const UPLOAD_DEFAULTS = {
+  title: "Q2 FY26 call",
+  type: "transcript",
+  fiscalYear: "26",
+
+  fiscalQuarter: "2",
+  filedOn: "2025-11-05",
+};
+
+/** Upload as admin; pass a field as undefined to leave it out. */
+function uploadPdf(
+  companyId: string,
+  file = PDF,
+  fields: Partial<Record<keyof typeof UPLOAD_DEFAULTS | "url", string | undefined>> = {},
+) {
+  let req = request(app).post(`/api/companies/${companyId}/filings/upload`).set(as(admin));
+
+  for (const [name, value] of Object.entries({ ...UPLOAD_DEFAULTS, ...fields })) {
+    if (value !== undefined) req = req.field(name, value);
+  }
+
+  return req.attach("file", file, { filename: "call.pdf", contentType: "application/pdf" });
 }
 
 async function uploadAndProcess(companyId: string) {
@@ -241,34 +257,96 @@ describe("filings: upload, process, presigned URL", () => {
 
     expect(notPdf.body.error).toBe("invalid_file");
 
-    const noTitle = await request(app)
-      .post(`/api/companies/${company.id}/filings/upload`)
-      .set(as(admin))
-      .attach("file", PDF, "call.pdf");
+    for (const missing of ["type", "fiscalYear", "fiscalQuarter", "filedOn"] as const) {
+      const res = await uploadPdf(company.id, PDF, { [missing]: undefined });
+      expect(res.status, missing).toBe(400);
+    }
 
-    expect(noTitle.status).toBe(400);
+    const badQuarter = await uploadPdf(company.id, PDF, { fiscalQuarter: "5" });
+    const badType = await uploadPdf(company.id, PDF, { type: "memo" });
+    const badDate = await uploadPdf(company.id, PDF, { filedOn: "05/11/2025" });
+
+    expect([badQuarter.status, badType.status, badDate.status]).toEqual([400, 400, 400]);
     expect(storedFiles.size).toBe(0);
+  });
+
+  it("generates a title when it is left empty", async () => {
+    const company = await createCompany("Ambuja Cements Ltd");
+    const res = await uploadPdf(company.id, PDF, { title: "  ", fiscalQuarter: "3" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.filing).toMatchObject({
+      title: "Ambuja Cements Ltd Q3 FY26 earnings call transcript",
+      type: "transcript",
+      fiscalYear: 26,
+
+      fiscalQuarter: 3,
+      filedOn: "2025-11-05",
+    });
+  });
+
+  it("returns 409 for a second filing of the same type and quarter", async () => {
+    const company = await createCompany();
+    expect((await uploadPdf(company.id)).status).toBe(201);
+
+    const duplicate = await uploadPdf(company.id, PDF, { title: "again" });
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body).toEqual({
+      error: "duplicate_period",
+      message: "This company already has a Q2 FY26 transcript filing",
+    });
+
+    // Another type in the same quarter, or the same type in another quarter, is fine.
+    expect((await uploadPdf(company.id, PDF, { type: "results" })).status).toBe(201);
+    expect((await uploadPdf(company.id, PDF, { fiscalQuarter: "3" })).status).toBe(201);
+    expect(storedFiles.size).toBe(3);
+  });
+
+  it("lists filings by period, newest first, regardless of upload order", async () => {
+    const company = await createCompany();
+    const upload = (fiscalYear: string, fiscalQuarter: string, type = "transcript") =>
+      uploadPdf(company.id, PDF, { title: "", fiscalYear, fiscalQuarter, type });
+
+    await upload("26", "1");
+    await upload("25", "4");
+    await upload("26", "3", "results");
+
+    await upload("26", "3");
+    await upload("27", "1");
+
+    const list = await request(app).get(`/api/companies/${company.id}/filings`).set(as(alice));
+    const periods = list.body.filings.map(
+      (f: { fiscalYear: number; fiscalQuarter: number; type: string }) =>
+        `Q${f.fiscalQuarter} FY${f.fiscalYear} ${f.type}`,
+    );
+
+    expect(periods).toEqual([
+      "Q1 FY27 transcript",
+      "Q3 FY26 transcript",
+      "Q3 FY26 results",
+
+      "Q1 FY26 transcript",
+      "Q4 FY25 transcript",
+    ]);
   });
 
   it("returns 409 for a duplicate source URL and removes the orphaned file", async () => {
     const company = await createCompany();
 
-    const send = () =>
-      request(app)
-        .post(`/api/companies/${company.id}/filings/upload`)
-        .set(as(admin))
-        .field("title", "x")
-        .field("url", "https://www.bseindia.com/a.pdf")
-        .attach("file", PDF, "call.pdf");
+    const send = (fiscalQuarter: string) =>
+      uploadPdf(company.id, PDF, { fiscalQuarter, url: "https://www.bseindia.com/a.pdf" });
 
-    expect((await send()).status).toBe(201);
-    expect((await send()).status).toBe(409);
+    expect((await send("1")).status).toBe(201);
+
+    const duplicate = await send("2");
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.message).toBe("A filing with this URL already exists");
     expect(storedFiles.size).toBe(1);
   });
 
   it("marks scanned PDFs (no text) as failed with 422", async () => {
     const company = await createCompany();
-    const upload = await uploadPdf(company.id, SCANNED, "scan");
+    const upload = await uploadPdf(company.id, SCANNED, { title: "scan" });
     const filingId: string = upload.body.filing.id;
 
     const processed = await request(app).post(`/api/filings/${filingId}/process`).set(as(admin));
@@ -287,7 +365,16 @@ describe("filings: upload, process, presigned URL", () => {
 
     const [linkOnly] = await db
       .insert(filings)
-      .values({ companyId: company.id, source: "bse", title: "link only" })
+      .values({
+        companyId: company.id,
+        source: "bse",
+        title: "link only",
+
+        type: "results",
+        fiscalYear: 26,
+        fiscalQuarter: 1,
+        filedOn: "2025-07-20",
+      })
       .returning();
 
     const noFile = await request(app).get(`/api/filings/${linkOnly!.id}/url`).set(as(alice));

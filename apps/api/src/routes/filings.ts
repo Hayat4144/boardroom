@@ -1,5 +1,5 @@
-import { filings } from "@boardroom/db";
-import { desc, eq, sql } from "@boardroom/db/orm";
+import { FILING_TYPES, filingTitle, filings } from "@boardroom/db";
+import { asc, desc, eq, sql } from "@boardroom/db/orm";
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
@@ -30,17 +30,20 @@ filingsRouter.post(
 
 filingsRouter.post("/filings/:id/process", requireAdmin, processFilingRoute);
 
-const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
+const emptyToUndefined = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
 
 const uploadFields = z.object({
-  title: z.string().trim().min(1).max(500),
-  category: z.preprocess(emptyToUndefined, z.string().trim().max(200).optional()),
+  type: z.enum(FILING_TYPES),
+  fiscalYear: z.coerce.number().int().min(1).max(99),
+  fiscalQuarter: z.coerce.number().int().min(1).max(4),
 
-  filedAt: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
+  filedOn: z.iso.date(),
+  title: z.preprocess(emptyToUndefined, z.string().trim().max(500).optional()),
   url: z.preprocess(emptyToUndefined, z.url().optional()),
 });
 
-/** GET /companies/:id/filings — newest first; the S3 key itself is never sent. */
+/** GET /companies/:id/filings — newest period first; the S3 key itself is never sent. */
 async function listFilings(req: Request, res: Response) {
   const { id } = parse(idParam, req.params);
   await findCompany(id);
@@ -51,19 +54,26 @@ async function listFilings(req: Request, res: Response) {
       companyId: filings.companyId,
       source: filings.source,
 
-      category: filings.category,
-      title: filings.title,
-      filedAt: filings.filedAt,
+      type: filings.type,
+      fiscalYear: filings.fiscalYear,
+      fiscalQuarter: filings.fiscalQuarter,
 
+      title: filings.title,
+      filedOn: filings.filedOn,
       url: filings.url,
+
       status: filings.status,
       createdAt: filings.createdAt,
-
       hasFile: sql<boolean>`${filings.storageKey} is not null`,
     })
     .from(filings)
     .where(eq(filings.companyId, id))
-    .orderBy(sql`${filings.filedAt} desc nulls last`, desc(filings.createdAt));
+    .orderBy(
+      desc(filings.fiscalYear),
+      desc(filings.fiscalQuarter),
+      asc(filings.type),
+      asc(filings.title),
+    );
 
   res.json({ filings: rows });
 }
@@ -79,16 +89,20 @@ async function getFilingUrl(req: Request, res: Response) {
 /** POST /companies/:id/filings/upload (admin) — multipart form with a "file" PDF. */
 async function uploadFilingRoute(req: Request, res: Response) {
   const { id } = parse(idParam, req.params);
-  await findCompany(id);
+  const company = await findCompany(id);
   if (!req.file) throw httpError(400, "invalid_request", 'Missing PDF in field "file"');
 
   const fields = parse(uploadFields, req.body);
-  const uploadedBy = currentUser(req).id;
+  const title =
+    fields.title ?? filingTitle(company.name, fields.fiscalYear, fields.fiscalQuarter, fields.type);
+
   const filing = await uploadFiling({
+    ...fields,
     companyId: id,
     data: req.file.buffer,
-    uploadedBy,
-    ...fields,
+
+    uploadedBy: currentUser(req).id,
+    title,
   });
 
   const { storageKey: _storageKey, ...rest } = filing;

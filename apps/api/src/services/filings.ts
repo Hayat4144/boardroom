@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { chunks, documentPages, filings, type Filing } from "@boardroom/db";
+import {
+  chunks,
+  documentPages,
+  filings,
+  formatPeriod,
+  type Filing,
+  type FilingType,
+} from "@boardroom/db";
 import { eq } from "@boardroom/db/orm";
 import { db } from "../db";
 import { httpError, notFound } from "../http";
@@ -15,12 +22,17 @@ export type UploadFilingInput = {
   data: Buffer;
   uploadedBy: string;
 
-  title: string;
-  category?: string;
-  filedAt?: Date;
+  type: FilingType;
+  fiscalYear: number;
+  fiscalQuarter: number;
 
+  /** YYYY-MM-DD */
+  filedOn: string;
+  title: string;
   url?: string;
 };
+
+const PERIOD_UNIQUE = "filings_company_period_type_unique";
 
 /** Stores the PDF in S3, then records the filing with status "new". */
 export async function uploadFiling(input: UploadFilingInput): Promise<Filing> {
@@ -38,9 +50,14 @@ export async function uploadFiling(input: UploadFilingInput): Promise<Filing> {
         companyId: input.companyId,
         source: "manual",
 
+        type: input.type,
+        fiscalYear: input.fiscalYear,
+        fiscalQuarter: input.fiscalQuarter,
+
+        filedOn: input.filedOn,
+        // Kept in sync with filedOn while extraction still reads filedAt.
+        filedAt: new Date(input.filedOn),
         title: input.title,
-        category: input.category,
-        filedAt: input.filedAt,
 
         url: input.url,
         storageKey,
@@ -55,7 +72,15 @@ export async function uploadFiling(input: UploadFilingInput): Promise<Filing> {
     // Don't leave an orphaned file behind.
     await deleteFile(storageKey).catch(() => undefined);
 
-    if (isUniqueViolation(err)) {
+    const constraint = uniqueViolation(err);
+
+    if (constraint === PERIOD_UNIQUE) {
+      const period = formatPeriod(input.fiscalYear, input.fiscalQuarter);
+      const message = `This company already has a ${period} ${input.type} filing`;
+      throw httpError(409, "duplicate_period", message);
+    }
+
+    if (constraint) {
       throw httpError(409, "duplicate_filing", "A filing with this URL already exists");
     }
 
@@ -123,8 +148,11 @@ function noTextError() {
   return httpError(422, "no_text", message);
 }
 
-/** Postgres error 23505, possibly wrapped by Drizzle in `cause`. */
-function isUniqueViolation(err: unknown): boolean {
-  const e = err as { code?: string; cause?: { code?: string } };
-  return e?.code === "23505" || e?.cause?.code === "23505";
+/** For Postgres error 23505 (possibly wrapped by Drizzle in `cause`), the violated constraint's name. */
+function uniqueViolation(err: unknown): string | null {
+  type PgError = { code?: string; constraint?: string };
+  const e = err as PgError & { cause?: PgError };
+  const pgError = e?.code === "23505" ? e : e?.cause?.code === "23505" ? e.cause : null;
+
+  return pgError ? (pgError.constraint ?? "unknown") : null;
 }
