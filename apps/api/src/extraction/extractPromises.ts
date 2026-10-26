@@ -11,8 +11,6 @@ const PAGES_PER_BATCH = 4;
 /** How much of the previous page to show as context (enough to catch the last speaker label). */
 const CONTEXT_CHARS = 1500;
 
-const MAX_OUTPUT_TOKENS = 10000;
-
 const extractedSchema = z.object({
   statement: z.string().min(1),
   speaker: z.string().nullish(),
@@ -106,6 +104,8 @@ async function extractBatch(userPrompt: string): Promise<Extracted[]> {
 
       response_format: { type: "json_object" },
       temperature: 0,
+      // Reasoning was ~90% of output tokens and latency; off: 22-page transcript 259s -> 34s.
+      reasoning: { enabled: false },
       // max_completion_tokens: MAX_OUTPUT_TOKENS,
     },
     { purpose: "extract_promises" },

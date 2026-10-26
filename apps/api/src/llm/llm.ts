@@ -8,7 +8,19 @@ export const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
 /** Long transcripts can take a while to generate; the SDK retries timeouts twice. */
 const TIMEOUT_MS = 120_000;
 
-export type ChatParams = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
+/** OpenRouter's reasoning controls; reasoning tokens are billed and timed as output. */
+export type ReasoningParams = {
+  effort?: "low" | "medium" | "high";
+  max_tokens?: number;
+  enabled?: boolean;
+
+  /** Hides reasoning from the response only; it is still generated (and still slow). */
+  exclude?: boolean;
+};
+
+export type ChatParams = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming & {
+  reasoning?: ReasoningParams;
+};
 export type ChatCompletion = OpenAI.Chat.ChatCompletion;
 
 export type LLMCallInfo = {

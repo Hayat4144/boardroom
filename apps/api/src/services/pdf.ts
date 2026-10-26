@@ -49,7 +49,11 @@ export async function stopOcr(): Promise<void> {
 }
 
 /** Runs fn over items with at most `limit` running at the same time, keeping input order. */
-async function mapWithLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+async function mapWithLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
 
@@ -108,7 +112,9 @@ export async function readPdfPages(data: Buffer): Promise<PageText[]> {
 
     console.log(`OCR on ${scannedPages.length} of ${result.pages.length} pages`);
 
-    const ocrPages = await mapWithLimit(scannedPages, RENDER_CONCURRENCY, (page) => ocrPage(parser, page.num));
+    const ocrPages = await mapWithLimit(scannedPages, RENDER_CONCURRENCY, (page) =>
+      ocrPage(parser, page.num),
+    );
 
     return [...textPages, ...ocrPages].sort((a, b) => a.pageNumber - b.pageNumber);
   } catch {

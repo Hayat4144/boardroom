@@ -11,8 +11,8 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 
 - [ ] [HAYAT] Pick one sector and 5 companies to start (expand to 20 later).
 - [ ] [HAYAT] Manually download, per company: last 4 quarters' earnings-call transcripts + quarterly results PDFs.
-- [ ] [HAYAT] Create the repo, add CLAUDE.md and TASKS.md, get an LLM API key.
-- [ ] [HAYAT] Create a private S3 dev bucket + an IAM user limited to that bucket (never use root keys).
+- [x] [HAYAT] Create the repo, add CLAUDE.md and TASKS.md, get an LLM API key.
+- [x] [HAYAT] Create a private S3 dev bucket + an IAM user limited to that bucket (never use root keys).
 - [x] [CC] pnpm monorepo, TypeScript, lint/format, local Postgres + pgvector, `.env.example`.
 - [x] [CC] Drizzle schema + migrations for all tables in CLAUDE.md; seed script for companies + one admin user.
 - [x] [CC] S3 storage service (put, stream get, delete, presigned URLs); AWS S3 only, nothing stored locally.
@@ -32,10 +32,10 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 
 ## Phase 2 — Learn: LLM basics + structured output
 
-- [ ] [HAYAT] Call the LLM directly from a script; read the raw response format.
-- [ ] [HAYAT] Get JSON output that matches a Zod schema; handle invalid JSON (retry/repair).
-- [ ] [HAYAT] Implement `extractPromises()` for one transcript: statement, metric, target, deadline, speaker, page.
-- [ ] [HAYAT] Handle long transcripts: split by pages/sections, merge and dedupe promises.
+- [x] [HAYAT] Call the LLM directly from a script; read the raw response format.
+- [x] [HAYAT] Get JSON output that matches a Zod schema; handle invalid JSON (retry/repair).
+- [x] [HAYAT] Implement `extractPromises()` for one transcript: statement, metric, target, deadline, speaker, page.
+- [x] [HAYAT] Handle long transcripts: split by pages/sections, merge and dedupe promises.
 
 ## Phase 3 — Learn: evals (do this early, not last)
 
