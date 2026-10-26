@@ -28,6 +28,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./orm": "./src/orm.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./fiscal": "./src/fiscal.ts"
   }
 }

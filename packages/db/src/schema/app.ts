@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  check,
   date,
   index,
   integer,
@@ -9,15 +11,18 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
+import { FILING_TYPES } from "../fiscal";
 import { user } from "./auth";
 
 export const EMBEDDING_DIMENSIONS = 1536;
 
 export const filingSource = pgEnum("filing_source", ["bse", "nse", "manual"]);
 export const filingStatus = pgEnum("filing_status", ["new", "processed", "failed"]);
+export const filingType = pgEnum("filing_type", FILING_TYPES);
 export const promiseCheckStatus = pgEnum("promise_check_status", [
   "kept",
   "missed",
@@ -58,8 +63,15 @@ export const filings = pgTable(
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
     source: filingSource().notNull(),
-    category: text(),
+    type: filingType().notNull(),
     title: text().notNull(),
+
+    // Indian fiscal year as two digits: 26 = FY26 = Apr 2025 – Mar 2026.
+    fiscalYear: integer().notNull(),
+    fiscalQuarter: integer().notNull(),
+    filedOn: date({ mode: "string" }).notNull(),
+
+    // Superseded by filedOn; kept (and written from filedOn) because extraction still reads it.
     filedAt: timestamp({ withTimezone: true }),
     // Original source URL (BSE/NSE); unique so automated ingestion can de-duplicate.
     url: text().unique(),
@@ -69,7 +81,16 @@ export const filings = pgTable(
     uploadedBy: text().references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index().on(t.companyId, t.filedAt)],
+  (t) => [
+    // One filing per company, quarter and type.
+    uniqueIndex("filings_company_period_type_unique").on(
+      t.companyId,
+      t.fiscalYear,
+      t.fiscalQuarter,
+      t.type,
+    ),
+    check("filings_fiscal_quarter_check", sql`${t.fiscalQuarter} between 1 and 4`),
+  ],
 );
 
 export const documentPages = pgTable(

@@ -1,0 +1,1 @@
+ALTER TABLE "filings" DROP COLUMN "category";

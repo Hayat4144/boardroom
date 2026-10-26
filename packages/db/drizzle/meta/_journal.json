@@ -15,6 +15,20 @@
       "when": 1792423932160,
       "tag": "0001_init_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793029027479,
+      "tag": "0002_filing_period",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793029049092,
+      "tag": "0003_drop_filing_category",
+      "breakpoints": true
     }
   ]
 }
