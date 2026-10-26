@@ -1,4 +1,5 @@
 // Shapes returned by the Boardroom API (dates arrive as ISO strings).
+import type { FilingType } from "@boardroom/db/fiscal";
 
 export type Role = "user" | "admin";
 
@@ -37,9 +38,12 @@ export interface Filing {
   id: string;
   companyId: string;
   source: "bse" | "nse" | "manual";
-  category: string | null;
+  type: FilingType;
+  fiscalYear: number;
+  fiscalQuarter: number;
   title: string;
-  filedAt: string | null;
+  /** YYYY-MM-DD */
+  filedOn: string;
   url: string | null;
   status: FilingStatus;
   createdAt: string;

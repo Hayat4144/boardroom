@@ -27,6 +27,7 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 - [x] [CC] Company page with Filings / Promises / Ask tabs; admin LLM calls page.
 - [x] [CC] `callLLM()` thin wrapper + logging to `llm_calls`; per-user rate limit on Ask.
 - [x] [CC] Seed cement test companies
+- [x] [CC] Structured filing type + fiscal quarter (schema, API, upload form with file-name prefill).
 - [ ] [HAYAT] Review the code; sign up, add a company, run it end-to-end with stubs throwing TODO.
 
 ## Phase 2 — Learn: LLM basics + structured output

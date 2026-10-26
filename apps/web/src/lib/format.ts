@@ -1,3 +1,5 @@
+import type { FilingType } from "@boardroom/db/fiscal";
+
 const dateFmt = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
   month: "short",
@@ -23,3 +25,10 @@ export const formatUsd = (v: string | number | null | undefined) => {
 };
 export const formatMs = (ms: number | null | undefined) =>
   ms == null ? "—" : ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+
+export const FILING_TYPE_LABEL: Record<FilingType, string> = {
+  transcript: "Transcript",
+  presentation: "Presentation",
+  results: "Results",
+  other: "Other",
+};

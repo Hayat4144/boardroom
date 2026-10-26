@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatPeriod } from "@boardroom/db/fiscal";
 import { ExternalLink, FileText, Loader2, RotateCw, Play } from "lucide-react";
 import { toast } from "sonner";
 import { Panel } from "@/components/page-header";
 import { EmptyState, ErrorState, TableSkeleton } from "@/components/states";
 import { FilingStatusBadge } from "@/components/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -15,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { qk, useFilings, useMe } from "@/hooks/queries";
 import { api, openFilingPdf } from "@/lib/api";
-import { formatDate } from "@/lib/format";
+import { FILING_TYPE_LABEL, formatDate } from "@/lib/format";
 import type { Filing } from "@/lib/types";
 import { UploadFilingDialog } from "./upload-filing-dialog";
 
@@ -105,9 +107,11 @@ export function FilingsTab({ companyId }: { companyId: string }) {
               <TableRow key={f.id}>
                 <TableCell className="py-2.5 pl-4 whitespace-normal sm:max-w-[320px]">
                   <div className="font-medium">{f.title}</div>
-                  <div className="text-muted-foreground text-xs">
-                    {f.category ?? "Uncategorised"}
-                    <span className="md:hidden"> · {formatDate(f.filedAt)}</span>
+                  <div className="text-muted-foreground mt-1 flex items-center gap-1.5 text-xs">
+                    <Badge variant="secondary" className="tabular">
+                      {formatPeriod(f.fiscalYear, f.fiscalQuarter)} · {FILING_TYPE_LABEL[f.type]}
+                    </Badge>
+                    <span className="md:hidden">{formatDate(f.filedOn)}</span>
                   </div>
                   <div className="mt-2 flex gap-1.5 sm:hidden">
                     <ViewPdfButton filing={f} />
@@ -115,7 +119,7 @@ export function FilingsTab({ companyId }: { companyId: string }) {
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground tabular hidden md:table-cell">
-                  {formatDate(f.filedAt)}
+                  {formatDate(f.filedOn)}
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden lg:table-cell">
                   {SOURCE_LABEL[f.source]}
