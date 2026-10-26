@@ -91,10 +91,11 @@ The script is safe to re-run.
 
 ```bash
 pnpm db:migrate      # creates all tables (and enables pgvector)
-pnpm db:seed         # 5 placeholder companies + the admin user from SEED_ADMIN_*
+pnpm seed            # cement test companies (+ ITC) and the admin user from SEED_ADMIN_*
 ```
 
-Re-running the seed is safe: existing companies are skipped and the admin keeps their password.
+Re-running the seed is safe: companies are upserted by NSE symbol (logged as inserted/updated)
+and the admin keeps their password. The company list lives in `packages/db/src/seed/companies.ts`.
 
 ### 5. Run
 
@@ -122,7 +123,7 @@ is queued. It will show "not built yet" until `extractPromises()` is implemented
 | `pnpm db:setup`    | One-time local role/database/pgvector setup                  |
 | `pnpm db:generate` | New migration from schema changes (`packages/db/src/schema`) |
 | `pnpm db:migrate`  | Apply migrations                                             |
-| `pnpm db:seed`     | Seed companies + admin user                                  |
+| `pnpm seed`        | Seed cement test companies + admin user (alias: `db:seed`)   |
 | `pnpm db:studio`   | Drizzle Studio (browse the database)                         |
 
 ## S3 setup

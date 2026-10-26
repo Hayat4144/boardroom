@@ -18,6 +18,7 @@
     "db:generate": "pnpm --filter @boardroom/db db:generate",
     "db:migrate": "pnpm --filter @boardroom/db db:migrate",
     "db:seed": "pnpm --filter @boardroom/db db:seed",
+    "seed": "pnpm --filter @boardroom/db db:seed",
     "db:studio": "pnpm --filter @boardroom/db db:studio"
   },
   "devDependencies": {
