@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { companies, user, type UserRole } from "@boardroom/db";
+import { companies, EMBEDDING_DIMENSIONS, user, type UserRole } from "@boardroom/db";
 import { eq } from "@boardroom/db/orm";
 import { createTestDb } from "@boardroom/db/testing";
 import type { Request } from "express";
@@ -55,4 +55,21 @@ export async function createCompany(name = "Infosys Ltd") {
     .values({ name, nseSymbol, bseCode })
     .returning();
   return company!;
+}
+
+/**
+ * Stand-in for the embedding model: each word lights up one dimension, so texts
+ * sharing words are close. Real meaning-matching is the model's job, not tested here.
+ */
+export function fakeVector(text: string): number[] {
+  const vector = new Array<number>(EMBEDDING_DIMENSIONS).fill(0);
+  const words = text.toLowerCase().match(/[a-z]+/g) ?? [];
+
+  for (const word of words) {
+    const hash = [...word].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 9973, 7);
+    vector[hash % EMBEDDING_DIMENSIONS]! += 1;
+  }
+
+  const length = Math.hypot(...vector) || 1;
+  return vector.map((value) => value / length);
 }

@@ -9,8 +9,8 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 
 ## Phase 0 — Setup
 
-- [ ] [HAYAT] Pick one sector and 5 companies to start (expand to 20 later).
-- [ ] [HAYAT] Manually download, per company: last 4 quarters' earnings-call transcripts + quarterly results PDFs.
+- [x] [HAYAT] Pick one sector and 5 companies to start (expand to 20 later).
+- [x] [HAYAT] Manually download, per company: last 4 quarters' earnings-call transcripts + quarterly results PDFs.
 - [x] [HAYAT] Create the repo, add CLAUDE.md and TASKS.md, get an LLM API key.
 - [x] [HAYAT] Create a private S3 dev bucket + an IAM user limited to that bucket (never use root keys).
 - [x] [CC] pnpm monorepo, TypeScript, lint/format, local Postgres + pgvector, `.env.example`.
@@ -51,7 +51,7 @@ Owner tags: **[CC]** = Claude Code, **[HAYAT]** = you write it by hand (no AI wr
 
 ## Phase 5 — Learn: retrieval + the agent loop
 
-- [ ] [CC] Embedding job that fills `chunks.embedding` + a similarity search service (no prompts).
+- [x] [CC] Embedding job that fills `chunks.embedding` + a similarity search service (no prompts).
 - [ ] [HAYAT] Write the agent loop yourself: send messages + tools → read tool call → run tool → append result → repeat; step limit; stop condition.
 - [ ] [HAYAT] Define tools: `search_documents`, `open_page`, `get_promises`, `compare_periods`.
 - [ ] [HAYAT] Implement `answerQuestion()` with mandatory citations; answer "not found" instead of guessing.

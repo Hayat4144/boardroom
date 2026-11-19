@@ -18,7 +18,8 @@ import {
 import { FILING_TYPES } from "../fiscal";
 import { user } from "./auth";
 
-export const EMBEDDING_DIMENSIONS = 1536;
+// Output size of the local embedding model (all-MiniLM-L6-v2, apps/api/src/services/embeddings.ts).
+export const EMBEDDING_DIMENSIONS = 384;
 
 export const filingSource = pgEnum("filing_source", ["bse", "nse", "manual"]);
 export const filingStatus = pgEnum("filing_status", ["new", "processed", "failed"]);

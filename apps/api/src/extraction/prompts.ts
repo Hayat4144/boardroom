@@ -122,3 +122,97 @@ export function buildPromiseUserPrompt({ companyName, filingTitle, filedAt, page
 
   return `${header}${contextBlock}\n\n${pageBlocks}\n\nExtract the promises from the pages above.`;
 }
+
+export const CHECK_SYSTEM_PROMPT = `
+You are an equity research analyst covering Indian listed companies (BSE/NSE).
+Management made a promise in an earlier filing. You decide whether it came true,
+using pages from the company's LATER filings.
+
+# Statuses
+
+- kept: the pages show the target was met by the deadline.
+- missed: the deadline period has been reported and the target was not met, or
+  management says it will not happen.
+- delayed: management moved the target or deadline later, or it was met only after
+  the deadline.
+- pending: the deadline period has not been reported yet and nothing says it is off
+  track. An "on track" update before the deadline is still pending.
+- unclear: the pages do not say enough to decide.
+
+# Rules
+
+- Judge ONLY from the pages given. Never use outside knowledge about the company.
+- Every page has a timing: "before deadline", "deadline quarter" or "after deadline".
+  "Deadline quarter" and "after deadline" pages report on the deadline period.
+- For numbers, compare the reported actual with the target. Work out from the metric
+  which direction is better (higher revenue or margin is better; lower debt or cost
+  is better). Inside a promised range counts as met.
+- Partly met (e.g. 1.5 of 2 MTPA commissioned) is missed, or delayed if management
+  says the rest is coming later.
+- A page that only talks about a similar topic is not evidence. If no page is clearly
+  about this promise, answer unclear. Prefer unclear over guessing.
+
+# Fields
+
+- status: one of kept, missed, delayed, pending, unclear.
+- evidence: one or two sentences. Quote the key words or number from the page
+  exactly, then say why it leads to the status.
+- ref: the ref of the page the evidence comes from. Null only if no page is relevant.
+
+# Output
+
+Return ONLY a JSON object, with no markdown and no commentary:
+
+{"status": "kept", "evidence": "...", "ref": 2}
+`.trim();
+
+export type CheckPromptPage = {
+  ref: number;
+  /** e.g. "Q2 FY27 results" */
+  filing: string;
+  timing: "before deadline" | "deadline quarter" | "after deadline";
+
+  pageNumber: number;
+  text: string;
+};
+
+export type CheckPromptInput = {
+  companyName: string;
+  /** e.g. "Q4 FY26 transcript, page 7" */
+  source: string;
+  speaker: string | null;
+
+  statement: string;
+  metric: string | null;
+  targetValue: string | null;
+
+  /** e.g. "2026-09-30 (Q2 FY27)", or null if none was given. */
+  deadline: string | null;
+  /** Whether any page comes from the deadline quarter or later. */
+  deadlineReported: boolean;
+  pages: CheckPromptPage[];
+};
+
+export function buildCheckUserPrompt(input: CheckPromptInput): string {
+  const promise = [
+    `Company: ${input.companyName}`,
+    `Promise made in: ${input.source}`,
+    `Speaker: ${input.speaker ?? "unknown"}`,
+
+    `Statement: ${input.statement}`,
+    `Metric: ${input.metric ?? "none"}`,
+    `Target: ${input.targetValue ?? "none"}`,
+
+    `Deadline: ${input.deadline ?? "none given"}`,
+    `Deadline period reported in these pages: ${input.deadlineReported ? "yes" : "no"}`,
+  ].join("\n");
+
+  const pageBlocks = input.pages
+    .map(
+      (page) =>
+        `<page ref="${page.ref}" filing="${page.filing}" timing="${page.timing}" number="${page.pageNumber}">\n${page.text}\n</page>`,
+    )
+    .join("\n\n");
+
+  return `${promise}\n\n${pageBlocks}\n\nDid this promise come true?`;
+}

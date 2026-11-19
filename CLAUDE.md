@@ -65,7 +65,7 @@ scripts/               ingestion + seed scripts (Claude Code)
 - `watchlist_items` — id, user_id, company_id, created_at (unique user_id + company_id).
 - `filings` — id, company_id, source (bse|nse|manual), category, title, filed_at, url, storage_key (S3 object key), status (new|processed|failed), uploaded_by (user_id, nullable).
 - `document_pages` — id, filing_id, page_number, text.
-- `chunks` — id, filing_id, page_number, content, embedding vector(1536) nullable.
+- `chunks` — id, filing_id, page_number, content, embedding vector(384) nullable (local all-MiniLM-L6-v2 model, no API call).
 - `promises` — id, company_id, source_filing_id, source_page, speaker, statement, metric, target_value, deadline, created_at.
 - `promise_checks` — id, promise_id, checked_against_filing_id, status (kept|missed|delayed|pending|unclear), evidence, evidence_page, checked_at.
 - `questions` — id, user_id, company_id, question, answer, citations jsonb, created_at.

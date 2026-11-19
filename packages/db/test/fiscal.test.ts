@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   comparePeriods,
+  dateToPeriod,
   filingTitle,
   formatPeriod,
   parseFilingFileName,
@@ -110,5 +111,22 @@ describe("filingTitle", () => {
       "ITC Ltd Q4 FY25 investor presentation",
     );
     expect(filingTitle("ITC Ltd", 25, 4, "results")).toBe("ITC Ltd Q4 FY25 results");
+  });
+});
+
+describe("dateToPeriod", () => {
+  it("maps months to Indian fiscal quarters", () => {
+    expect(dateToPeriod("2026-04-01")).toEqual({ fy: 27, quarter: 1 });
+    expect(dateToPeriod("2026-06-30")).toEqual({ fy: 27, quarter: 1 });
+    expect(dateToPeriod("2026-09-30")).toEqual({ fy: 27, quarter: 2 });
+
+    expect(dateToPeriod("2026-12-31")).toEqual({ fy: 27, quarter: 3 });
+    expect(dateToPeriod("2027-01-15")).toEqual({ fy: 27, quarter: 4 });
+    expect(dateToPeriod("2027-03-31")).toEqual({ fy: 27, quarter: 4 });
+  });
+
+  it("rejects bad dates", () => {
+    expect(() => dateToPeriod("2026-13-01")).toThrow();
+    expect(() => dateToPeriod("soon")).toThrow();
   });
 });

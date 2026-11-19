@@ -15,7 +15,7 @@ import type * as AnswerQuestionModule from "../src/agent/answerQuestion";
 import { answerQuestion } from "../src/agent/answerQuestion";
 import { app } from "../src/app";
 import type { SessionUser } from "../src/auth/auth";
-import { enqueueExtractPromises } from "../src/jobs/jobs";
+import { enqueueEmbedChunks, enqueueExtractPromises } from "../src/jobs/jobs";
 import { stopOcr } from "../src/services/pdf";
 import { as, createCompany, createUser, storedFiles, testDb } from "./helpers";
 
@@ -32,7 +32,10 @@ vi.mock("../src/services/storage", async (importOriginal) => ({
   ...(await import("./helpers")).memoryStorage,
 }));
 
-vi.mock("../src/jobs/jobs", () => ({ enqueueExtractPromises: vi.fn(async () => "job-1") }));
+vi.mock("../src/jobs/jobs", () => ({
+  enqueueExtractPromises: vi.fn(async () => "job-1"),
+  enqueueEmbedChunks: vi.fn(async () => "job-2"),
+}));
 
 // Keep the real HAYAT stub (it throws TODO) but allow per-test overrides.
 vi.mock("../src/agent/answerQuestion", async (importOriginal) => {
@@ -205,7 +208,7 @@ describe("filings: upload, process, presigned URL", () => {
     expect(storedFiles.size).toBe(0);
   });
 
-  it("stores the PDF, extracts pages + chunks and enqueues extraction", async () => {
+  it("stores the PDF, extracts pages + chunks and enqueues extraction + embedding", async () => {
     const company = await createCompany();
     const filingId = await uploadAndProcess(company.id);
     expect([...storedFiles.keys()]).toEqual([`filings/${company.id}/${filingId}.pdf`]);
@@ -222,6 +225,7 @@ describe("filings: upload, process, presigned URL", () => {
     expect(chunkRows.every((c) => c.pageNumber >= 1 && c.embedding === null)).toBe(true);
 
     expect(enqueueExtractPromises).toHaveBeenCalledWith(filingId);
+    expect(enqueueEmbedChunks).toHaveBeenCalledWith(filingId);
   });
 
   it("re-processing replaces pages instead of duplicating them", async () => {
@@ -356,6 +360,7 @@ describe("filings: upload, process, presigned URL", () => {
     const [filing] = await db.select().from(filings).where(eq(filings.id, filingId));
     expect(filing!.status).toBe("failed");
     expect(enqueueExtractPromises).not.toHaveBeenCalled();
+    expect(enqueueEmbedChunks).not.toHaveBeenCalled();
   });
 
   it("presigned URL: 404 unknown filing, 409 when there is no stored file", async () => {
@@ -419,14 +424,15 @@ describe("promises", () => {
     });
   });
 
-  it("check is admin-only and answers 501 while checkPromises() is a stub", async () => {
+  it("check is admin-only and returns the checks it created", async () => {
     const company = await createCompany();
     const url = `/api/companies/${company.id}/promises/check`;
     expect((await request(app).post(url).set(as(alice))).status).toBe(403);
 
+    // No promises yet, so nothing to check (checkPromises() itself is tested separately).
     const res = await request(app).post(url).set(as(admin));
-    expect(res.status).toBe(501);
-    expect(res.body).toEqual({ error: "not_implemented", message: "TODO(HAYAT): implement" });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ checks: [] });
   });
 });
 

@@ -10,7 +10,7 @@ import {
 import { eq } from "@boardroom/db/orm";
 import { db } from "../db";
 import { httpError, notFound } from "../http";
-import { enqueueExtractPromises } from "../jobs/jobs";
+import { enqueueEmbedChunks, enqueueExtractPromises } from "../jobs/jobs";
 import { chunkText } from "./chunking";
 import { isPdf, readPdfPages } from "./pdf";
 import { deleteFile, downloadFile, filingKey, uploadFile } from "./storage";
@@ -94,12 +94,13 @@ export type ProcessResult = {
   chunks: number;
 
   extractionJobId: string | null;
+  embeddingJobId: string | null;
 };
 
 /**
  * Downloads the PDF from S3 into memory, saves its page text and chunks
  * (replacing earlier ones), marks the filing processed and queues promise
- * extraction. On any failure the filing is marked "failed".
+ * extraction and chunk embedding. On any failure the filing is marked "failed".
  */
 export async function processFiling(filingId: string): Promise<ProcessResult> {
   const storageKey = await getStorageKey(filingId);
@@ -123,7 +124,10 @@ export async function processFiling(filingId: string): Promise<ProcessResult> {
     });
 
     const extractionJobId = await enqueueExtractPromises(filingId);
-    return { filingId, pages: pages.length, chunks: chunkRows.length, extractionJobId };
+    const embeddingJobId = await enqueueEmbedChunks(filingId);
+
+    const counts = { pages: pages.length, chunks: chunkRows.length };
+    return { filingId, ...counts, extractionJobId, embeddingJobId };
   } catch (err) {
     await db.update(filings).set({ status: "failed" }).where(eq(filings.id, filingId));
     throw err;

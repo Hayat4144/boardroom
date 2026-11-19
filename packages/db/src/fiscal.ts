@@ -45,6 +45,20 @@ export function comparePeriods(a: Period, b: Period): number {
   return a.fy - b.fy || (a.quarter ?? 5) - (b.quarter ?? 5);
 }
 
+/** "2026-09-30" → { fy: 27, quarter: 2 }. April starts a new fiscal year. */
+export function dateToPeriod(date: string): { fy: number; quarter: number } {
+  const year = Number(date.slice(0, 4));
+  const month = Number(date.slice(5, 7));
+
+  if (!year || !(month >= 1 && month <= 12)) throw new Error(`Invalid date: ${date}`);
+
+  // Apr–Jun = Q1, Jul–Sep = Q2, Oct–Dec = Q3, Jan–Mar = Q4 (of the year that started last April).
+  const quarter = month >= 4 ? Math.ceil((month - 3) / 3) : 4;
+  const fy = (month >= 4 ? year + 1 : year) % 100;
+
+  return { fy, quarter };
+}
+
 /** "AMBUJACEM_Q3FY26_transcript.pdf" → { symbol, fy, quarter, type }; null if it doesn't fit. */
 export function parseFilingFileName(
   fileName: string,

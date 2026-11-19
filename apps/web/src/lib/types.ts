@@ -118,4 +118,5 @@ export interface ProcessResult {
   pages: number;
   chunks: number;
   extractionJobId: string | null;
+  embeddingJobId: string | null;
 }

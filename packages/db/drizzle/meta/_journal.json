@@ -29,6 +29,13 @@
       "when": 1793029049092,
       "tag": "0003_drop_filing_category",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793342606628,
+      "tag": "0004_chunk_embedding_384",
+      "breakpoints": true
     }
   ]
 }
