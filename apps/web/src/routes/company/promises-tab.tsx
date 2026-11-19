@@ -2,11 +2,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Code2, FileSearch, ListChecks, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Panel } from "@/components/page-header";
+import { usePdfViewer } from "@/components/pdf-viewer";
 import { EmptyState, ErrorState, TableSkeleton } from "@/components/states";
 import { PromiseStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { qk, useMe, usePromises } from "@/hooks/queries";
-import { api, isNotImplemented, openFilingPdf } from "@/lib/api";
+import { api, isNotImplemented } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import type { PromiseItem } from "@/lib/types";
 
@@ -19,13 +20,13 @@ function PageLink({
   page: number | null;
   children: React.ReactNode;
 }) {
+  const openPdf = usePdfViewer();
+
   return (
     <button
       type="button"
       className="text-link inline-flex items-center gap-1 text-xs font-medium hover:underline"
-      onClick={() =>
-        void openFilingPdf(filingId, page).catch((err: Error) => toast.error(err.message))
-      }
+      onClick={() => openPdf({ filingId, page })}
     >
       {children}
     </button>

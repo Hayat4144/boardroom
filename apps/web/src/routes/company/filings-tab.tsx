@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatPeriod } from "@boardroom/db/fiscal";
-import { ExternalLink, FileText, Loader2, RotateCw, Play } from "lucide-react";
+import { FileText, Loader2, RotateCw, Play } from "lucide-react";
 import { toast } from "sonner";
 import { Panel } from "@/components/page-header";
+import { usePdfViewer } from "@/components/pdf-viewer";
 import { EmptyState, ErrorState, TableSkeleton } from "@/components/states";
 import { FilingStatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { qk, useFilings, useMe } from "@/hooks/queries";
-import { api, openFilingPdf } from "@/lib/api";
+import { api } from "@/lib/api";
 import { FILING_TYPE_LABEL, formatDate } from "@/lib/format";
 import type { Filing } from "@/lib/types";
 import { UploadFilingDialog } from "./upload-filing-dialog";
@@ -52,14 +53,16 @@ function ProcessButton({ filing }: { filing: Filing }) {
 }
 
 function ViewPdfButton({ filing }: { filing: Filing }) {
+  const openPdf = usePdfViewer();
+
   return (
     <Button
       variant="ghost"
       size="sm"
       disabled={!filing.hasFile}
-      onClick={() => void openFilingPdf(filing.id).catch((err: Error) => toast.error(err.message))}
+      onClick={() => openPdf({ filingId: filing.id, title: filing.title })}
     >
-      <ExternalLink /> View PDF
+      <FileText /> View PDF
     </Button>
   );
 }

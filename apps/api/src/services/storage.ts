@@ -48,8 +48,18 @@ export async function deleteFile(key: string): Promise<void> {
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
 
-/** A short-lived URL that lets the browser read one private object. */
+/**
+ * A short-lived URL that lets the browser read one private object.
+ * Served as an inline PDF so it renders inside the app's viewer instead of downloading.
+ */
 export function getFileUrl(key: string, expiresIn = URL_EXPIRES_SECONDS): Promise<string> {
-  const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+
+    ResponseContentType: "application/pdf",
+    ResponseContentDisposition: "inline",
+  });
+
   return getSignedUrl(s3, command, { expiresIn });
 }

@@ -10,11 +10,9 @@ import {
 } from "../extraction/prompts";
 import z from "zod";
 
-/** Chunks from the whole company, and from filings of a period the question names. */
 const GENERAL_LIMIT = 6;
 const PERIOD_LIMIT = 6;
 
-/** Most excerpts sent to the LLM after merging both searches. */
 const MAX_EXCERPTS = 8;
 /** Chunks further than this (cosine distance) are about something else. Same as checkPromises. */
 const MAX_DISTANCE = 0.75;

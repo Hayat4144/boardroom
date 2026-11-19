@@ -105,18 +105,3 @@ export const api = {
 
   llmCalls: () => request<{ calls: LlmCall[]; totals: LlmCallTotals }>("/api/llm-calls"),
 };
-
-/** Opens a filing's PDF (optionally at a page) via a short-lived presigned URL. */
-export async function openFilingPdf(filingId: string, page?: number | null) {
-  // Open the tab synchronously so popup blockers allow it, then point it at the URL.
-  const tab = window.open("about:blank", "_blank");
-  try {
-    const { url } = await api.filingUrl(filingId);
-    const target = page ? `${url}#page=${page}` : url;
-    if (tab) tab.location.href = target;
-    else window.location.href = target;
-  } catch (err) {
-    tab?.close();
-    throw err;
-  }
-}

@@ -1,19 +1,21 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileText, Loader2, MessageSquareText, Send } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Panel } from "@/components/page-header";
+import { usePdfViewer } from "@/components/pdf-viewer";
 import { EmptyState, ErrorState, NotImplementedState, TableSkeleton } from "@/components/states";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { qk, useFilings, useQuestions } from "@/hooks/queries";
-import { ApiError, api, isNotImplemented, openFilingPdf } from "@/lib/api";
+import { ApiError, api, isNotImplemented } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import type { Question } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function AnswerCard({ q, filingTitles }: { q: Question; filingTitles: Map<string, string> }) {
+  const openPdf = usePdfViewer();
+
   return (
     <div className="space-y-4">
       <div>
@@ -32,9 +34,12 @@ function AnswerCard({ q, filingTitles }: { q: Question; filingTitles: Map<string
                 <button
                   type="button"
                   onClick={() =>
-                    void openFilingPdf(c.filingId, c.page).catch((err: Error) =>
-                      toast.error(err.message),
-                    )
+                    openPdf({
+                      filingId: c.filingId,
+                      page: c.page,
+                      title: filingTitles.get(c.filingId),
+                      quote: c.quote,
+                    })
                   }
                   className="hover:border-primary/40 hover:bg-accent group w-full rounded-md border p-3 text-left transition-colors"
                 >
