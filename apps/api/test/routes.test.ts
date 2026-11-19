@@ -37,11 +37,13 @@ vi.mock("../src/jobs/jobs", () => ({
   enqueueEmbedChunks: vi.fn(async () => "job-2"),
 }));
 
-// Keep the real HAYAT stub (it throws TODO) but allow per-test overrides.
-vi.mock("../src/agent/answerQuestion", async (importOriginal) => {
-  const original = await importOriginal<typeof AnswerQuestionModule>();
-  return { answerQuestion: vi.fn(original.answerQuestion) };
-});
+// Never call the real LLM in tests. By default it behaves like an unfinished stub (throws TODO),
+// so the 501 path stays covered; tests override it per call.
+vi.mock("../src/agent/answerQuestion", () => ({
+  answerQuestion: vi.fn<typeof AnswerQuestionModule.answerQuestion>(async () => {
+    throw new Error("TODO(HAYAT): implement");
+  }),
+}));
 
 const PDF = readFileSync(new URL("./fixtures/transcript.pdf", import.meta.url));
 const SCANNED = readFileSync(new URL("./fixtures/scanned.pdf", import.meta.url));
@@ -440,7 +442,7 @@ describe("ask + question history", () => {
   const ask = (user: SessionUser, companyId: string, question: string) =>
     request(app).post(`/api/companies/${companyId}/ask`).set(as(user)).send({ question });
 
-  it("answers 501 while answerQuestion() is a stub and stores nothing", async () => {
+  it("answers 501 when answerQuestion() throws TODO(HAYAT) and stores nothing", async () => {
     const company = await createCompany();
     const res = await ask(alice, company.id, "What is the margin guidance?");
 
@@ -455,7 +457,10 @@ describe("ask + question history", () => {
 
     const res = await ask(alice, company.id, "  What is the margin guidance?  ");
     expect(res.status).toBe(201);
-    expect(answerQuestion).toHaveBeenLastCalledWith(company.id, "What is the margin guidance?");
+    expect(answerQuestion).toHaveBeenLastCalledWith(
+      { companyId: company.id, companyName: company.name },
+      "What is the margin guidance?",
+    );
 
     expect(res.body.question).toMatchObject({
       userId: alice.id,

@@ -112,8 +112,18 @@ export type PromptInput = {
   context: string | null;
 };
 
-export function buildPromiseUserPrompt({ companyName, filingTitle, filedAt, pages, context }: PromptInput): string {
-  const header = [`Company: ${companyName}`, `Filing: ${filingTitle}`, `Filing date: ${filedAt ?? "unknown"}`].join("\n");
+export function buildPromiseUserPrompt({
+  companyName,
+  filingTitle,
+  filedAt,
+  pages,
+  context,
+}: PromptInput): string {
+  const header = [
+    `Company: ${companyName}`,
+    `Filing: ${filingTitle}`,
+    `Filing date: ${filedAt ?? "unknown"}`,
+  ].join("\n");
   const contextBlock = context ? `\n\n<context>\n${context}\n</context>` : "";
 
   const pageBlocks = pages
@@ -215,4 +225,97 @@ export function buildCheckUserPrompt(input: CheckPromptInput): string {
     .join("\n\n");
 
   return `${promise}\n\n${pageBlocks}\n\nDid this promise come true?`;
+}
+
+export const ASK_SYSTEM_PROMPT = `
+You are an equity research analyst covering Indian listed companies (BSE/NSE).
+A user asks a question about one company. You answer it using ONLY the excerpts
+from the company's filings given to you (earnings-call transcripts, results,
+presentations, announcements).
+
+# Rules
+
+- Use ONLY the excerpts. Never use outside knowledge about the company, its
+  share price, or the industry, even if you are confident.
+- Every fact or number in your answer must come from an excerpt you cite.
+- "Promises", "guidance", "targets", "plans" and "commitments" all mean the same
+  thing: forward-looking statements by management (a target, plan, timeline or
+  forecast). Capacity, capex, cost, volume, margin, debt and commissioning
+  targets all count, whatever words management used.
+- Each excerpt's filing label (e.g. "Q4 FY25 transcript") is the period that
+  filing reports on. "Promises made in FY25" means statements in FY25 filings.
+  "The FY28 target" means a target for FY28, which can come from any filing.
+- "Last quarter", "latest quarter", "this quarter" and "recently" mean the latest
+  period given above the excerpts, not the latest one you happen to see in them.
+- Margin in Indian cement, metals and similar sectors is often reported as
+  "EBITDA per tonne" (PMT) as well as "EBITDA margin" (%). Give both if present.
+- If any excerpt is relevant, answer from it. If the excerpts only partly answer
+  the question, answer that part and say what is missing. Never say you couldn't
+  find something and then answer it anyway.
+- Only if no excerpt is relevant, say: "I couldn't find this in the uploaded
+  filings." and, in one sentence, which periods the excerpts do cover. Do not
+  guess and do not fill gaps.
+- Keep numbers, units and ranges exactly as written (₹, crore, lakh, %, MTPA).
+  Do not convert or round them.
+- Say which period a number belongs to (e.g. "Q2 FY27"). Indian fiscal years run
+  April to March: FY27 = April 2026 to March 2027.
+- Tell apart what management SAID (guidance, plans) from what was REPORTED
+  (actual results). Say "management guided..." or "the company reported...".
+- Analysts' questions and assumptions in transcripts are not facts. Do not
+  present them as the company's view.
+- If two excerpts disagree (e.g. guidance changed between quarters), give both
+  with their periods, newest last.
+- Be concise: a direct answer first, then up to a few sentences of support.
+  Plain text, no markdown headings.
+
+# Citations
+
+- Cite every excerpt you used. Each citation has:
+  - ref: the ref number of the excerpt.
+  - quote: the exact words from that excerpt that support the answer, copied
+    character for character, at most about 30 words. Do not paraphrase.
+- If you answered "couldn't find", return an empty citations list.
+
+# Output
+
+Return ONLY a JSON object, with no markdown and no commentary:
+
+{"answer": "...", "citations": [{"ref": 2, "quote": "..."}]}
+`.trim();
+
+export type AskPromptExcerpt = {
+  ref: number;
+  /** e.g. "Q2 FY27 transcript" */
+  filing: string;
+  pageNumber: number;
+  text: string;
+};
+
+export type AskPromptInput = {
+  companyName: string;
+  question: string;
+  excerpts: AskPromptExcerpt[];
+
+  /** Newest period among the company's filings, e.g. "Q1 FY27"; what "last quarter" means. */
+  latestPeriod: string | null;
+};
+
+export function buildAskUserPrompt({
+  companyName,
+  question,
+  excerpts,
+  latestPeriod,
+}: AskPromptInput): string {
+  const excerptBlocks = excerpts
+    .map(
+      (excerpt) =>
+        `<excerpt ref="${excerpt.ref}" filing="${excerpt.filing}" page="${excerpt.pageNumber}">\n${excerpt.text}\n</excerpt>`,
+    )
+    .join("\n\n");
+
+  const body = excerpts.length > 0 ? excerptBlocks : "(no relevant excerpts were found)";
+
+  const header = `Company: ${companyName}\nLatest period in the filings: ${latestPeriod ?? "unknown"}`;
+
+  return `${header}\n\n${body}\n\nQuestion: ${question}`;
 }

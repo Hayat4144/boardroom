@@ -50,8 +50,10 @@ async function ask(req: Request, res: Response) {
   const { id } = parse(idParam, req.params);
   const { question } = parse(askBody, req.body);
 
-  await findCompany(id);
-  const { answer, citations } = answerSchema.parse(await answerQuestion(id, question));
+  const company = await findCompany(id);
+  const { answer, citations } = answerSchema.parse(
+    await answerQuestion({ companyId: company.id, companyName: company.name }, question),
+  );
 
   const [saved] = await db
     .insert(questions)
